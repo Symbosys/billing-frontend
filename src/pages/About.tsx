@@ -1,12 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Users, Target, Globe } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
-const statsData = [
-  { value: '5,000+', label: 'Active Businesses', bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-600', offsetY: '' },
-  { value: '$2B+', label: 'Invoices Processed', bg: 'bg-purple-50', border: 'border-purple-100', text: 'text-purple-600', offsetY: 'translate-y-8' },
-  { value: '99.9%', label: 'Uptime Guarantee', bg: 'bg-emerald-50', border: 'border-emerald-100', text: 'text-emerald-600', offsetY: '' },
-  { value: '24/7', label: 'Customer Support', bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-600', offsetY: 'translate-y-8' },
-];
+import { dashboardApi } from '../lib/api';
 
 const valuesData = [
   {
@@ -14,23 +9,113 @@ const valuesData = [
     icon: Target,
     bg: 'bg-blue-100',
     text: 'text-blue-600',
-    description: "We believe that powerful software shouldn't require a manual. We design for clarity, ease of use, and speed."
+    description: "We believe that powerful software shouldn't require a manual. We design for clarity, ease of use, and speed.",
   },
   {
     title: 'Customer Obsession',
     icon: Users,
     bg: 'bg-purple-100',
     text: 'text-purple-600',
-    description: 'Your success is our success. Every feature we build is driven by the real needs of our amazing users.'
+    description: 'Your success is our success. Every feature we build is driven by the real needs of our amazing users.',
   },
   {
     title: 'Built for Scale',
     icon: Globe,
     bg: 'bg-emerald-100',
     text: 'text-emerald-600',
-    description: "Whether you're a team of two or two thousand, our infrastructure is designed to grow flawlessly alongside you."
-  }
+    description: "Whether you're a team of two or two thousand, our infrastructure is designed to grow flawlessly alongside you.",
+  },
 ];
+
+// ─── Dynamic stat cards (fetched from /dashboard) ────────────────────────────
+
+interface StatCard {
+  value: string;
+  label: string;
+  bg: string;
+  border: string;
+  text: string;
+  offsetY: string;
+}
+
+const defaultStats: StatCard[] = [
+  { value: '5,000+', label: 'Active Businesses', bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-600', offsetY: '' },
+  { value: '$2B+', label: 'Invoices Processed', bg: 'bg-purple-50', border: 'border-purple-100', text: 'text-purple-600', offsetY: 'translate-y-8' },
+  { value: '99.9%', label: 'Uptime Guarantee', bg: 'bg-emerald-50', border: 'border-emerald-100', text: 'text-emerald-600', offsetY: '' },
+  { value: '24/7', label: 'Customer Support', bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-600', offsetY: 'translate-y-8' },
+];
+
+function StatsGrid() {
+  const [stats, setStats] = useState<StatCard[]>(defaultStats);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Try to fetch real revenue + customer data from dashboard
+    // The dashboard route is protected, so this will only succeed if user is logged in
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+
+    dashboardApi.getStats()
+      .then((res) => {
+        const dashStats = res.data.stats;
+        const revenue = dashStats.find(s => s.title === 'Net Revenue');
+        const customers = dashStats.find(s => s.title === 'Total Customers');
+
+        setStats([
+          {
+            value: customers ? customers.value : '5,000+',
+            label: 'Active Customers',
+            bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-600', offsetY: '',
+          },
+          {
+            value: revenue ? revenue.value : '$2B+',
+            label: 'Revenue Processed',
+            bg: 'bg-purple-50', border: 'border-purple-100', text: 'text-purple-600', offsetY: 'translate-y-8',
+          },
+          {
+            value: '99.9%',
+            label: 'Uptime Guarantee',
+            bg: 'bg-emerald-50', border: 'border-emerald-100', text: 'text-emerald-600', offsetY: '',
+          },
+          {
+            value: '24/7',
+            label: 'Customer Support',
+            bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-600', offsetY: 'translate-y-8',
+          },
+        ]);
+      })
+      .catch(() => {
+        // Silently fall back to default stats if not logged in or API fails
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  return (
+    <div className="grid grid-cols-2 gap-6">
+      {isLoading
+        ? defaultStats.map((_, i) => (
+            <div key={i} className={`p-8 bg-slate-100 rounded-2xl border border-slate-200 ${_.offsetY} animate-pulse`}>
+              <div className="h-10 bg-slate-200 rounded-lg w-3/4 mb-2" />
+              <div className="h-4 bg-slate-200 rounded w-full" />
+            </div>
+          ))
+        : stats.map((stat, index) => (
+            <div
+              key={index}
+              className={`p-8 ${stat.bg} rounded-2xl border ${stat.border} text-center ${stat.offsetY} transition-all hover:shadow-md`}
+            >
+              <p className={`text-4xl font-extrabold ${stat.text} mb-2`}>{stat.value}</p>
+              <p className="text-slate-600 font-medium">{stat.label}</p>
+            </div>
+          ))}
+    </div>
+  );
+}
+
+// ─── About Page ───────────────────────────────────────────────────────────────
 
 const About = () => {
   return (
@@ -66,14 +151,8 @@ const About = () => {
                 We built Symbosys to bring everything under one beautifully designed roof. Today, we help thousands of businesses streamline their workflows and focus on what they do best: growing.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-6">
-              {statsData.map((stat, index) => (
-                <div key={index} className={`p-8 ${stat.bg} rounded-2xl border ${stat.border} text-center ${stat.offsetY}`}>
-                  <p className={`text-4xl font-extrabold ${stat.text} mb-2`}>{stat.value}</p>
-                  <p className="text-slate-600 font-medium">{stat.label}</p>
-                </div>
-              ))}
-            </div>
+            {/* Live stats grid */}
+            <StatsGrid />
           </div>
         </div>
       </section>

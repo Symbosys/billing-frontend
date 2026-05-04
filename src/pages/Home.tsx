@@ -1,5 +1,8 @@
-import { ArrowRight, CheckCircle2, Zap, Shield, BarChart3, Users, Box, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowRight, CheckCircle2, Zap, Shield, BarChart3, Users, Box, ChevronRight, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { dashboardApi, type DashboardStat } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 const featuresData = [
   { title: 'Smart Billing', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-100', desc: 'Automate your invoicing and accept global payments effortlessly.' },
@@ -9,6 +12,62 @@ const featuresData = [
   { title: 'Enterprise Security', icon: Shield, color: 'text-rose-500', bg: 'bg-rose-100', desc: 'Bank-grade encryption keeping your business data safe.' },
   { title: 'Seamless Integrations', icon: Zap, color: 'text-indigo-500', bg: 'bg-indigo-100', desc: 'Connect with your favorite tools in just a few clicks.' },
 ];
+
+// ─── Live Stats Bar (shown only when logged in) ───────────────────────────────
+
+function LiveStatsBar() {
+  const { token } = useAuth();
+  const [stats, setStats] = useState<DashboardStat[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    dashboardApi.getStats()
+      .then(res => setStats(res.data.stats))
+      .catch(() => setStats([]))
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  if (!token) return null;
+
+  return (
+    <section className="py-12 bg-white border-b border-slate-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+          <span className="text-sm font-semibold text-emerald-600 uppercase tracking-wider">Live Business Overview</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          {loading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="p-6 bg-slate-50 rounded-2xl border border-slate-200 animate-pulse">
+                  <div className="h-4 bg-slate-200 rounded w-3/4 mb-3"></div>
+                  <div className="h-8 bg-slate-200 rounded w-1/2 mb-2"></div>
+                  <div className="h-3 bg-slate-200 rounded w-full"></div>
+                </div>
+              ))
+            : stats.map((stat, i) => (
+                <div key={i} className="group p-6 bg-slate-50 hover:bg-blue-50 rounded-2xl border border-slate-200 hover:border-blue-200 transition-all duration-300">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{stat.title}</p>
+                  <p className="text-2xl font-extrabold text-slate-900 mb-1">{stat.value}</p>
+                  <div className="flex items-center gap-1.5">
+                    <TrendingUp className={`w-3.5 h-3.5 ${stat.isPositive ? 'text-emerald-500' : 'text-red-400'}`} />
+                    <span className={`text-xs font-semibold ${stat.isPositive ? 'text-emerald-600' : 'text-red-500'}`}>{stat.change}</span>
+                    <span className="text-xs text-slate-400">{stat.detail}</span>
+                  </div>
+                </div>
+              ))
+          }
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Home Page ────────────────────────────────────────────────────────────────
 
 const Home = () => {
   return (
@@ -44,7 +103,7 @@ const Home = () => {
             </a>
           </div>
 
-          <div className="mt-12 text-sm text-slate-500 flex items-center justify-center gap-6">
+          <div className="mt-12 text-sm text-slate-500 flex items-center justify-center gap-6 flex-wrap">
             <span className="flex items-center gap-1"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> No credit card required</span>
             <span className="flex items-center gap-1"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> 14-day free trial</span>
             <span className="flex items-center gap-1"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Cancel anytime</span>
@@ -63,12 +122,15 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Live Stats Bar — shown only when logged in */}
+      <LiveStatsBar />
+
       {/* Features Section */}
       <section id="features" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-blue-600 font-semibold tracking-wide uppercase text-sm mb-3">Powerful Features</h2>
-            <h3 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6">Everything you need to scale</h3>
+            <h3 className="text-3xl md:text-4xl font-bold text-slateate-900 mb-6">Everything you need to scale</h3>
             <p className="text-lg text-slate-600">
               Stop juggling multiple tools. Symbosys brings your entire business operations under one roof with powerful, easy-to-use features.
             </p>
